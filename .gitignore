@@ -28,3 +28,4 @@ bootstrap.sh
 yarn-error.log
 debug/*
 package-lock.json
+install-state.gz
