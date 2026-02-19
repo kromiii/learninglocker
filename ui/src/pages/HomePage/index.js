@@ -1,290 +1,264 @@
-/* eslint-disable react/jsx-indent */
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import Helmet from 'react-helmet';
-import DebounceInput from 'react-debounce-input';
 import { connect } from 'react-redux';
-import { Card, CardText } from 'react-toolbox/lib/card';
-import { List, ListItem } from 'react-toolbox/lib/list';
 import { Map, List as ImmutList, fromJS } from 'immutable';
-import { AutoSizer, List as VirtualList, InfiniteLoader } from 'react-virtualized';
-import { withProps, compose, withState } from 'recompose';
+import { compose, withProps, withState } from 'recompose';
 import { actions as routerActions } from 'redux-router5';
 import moment from 'moment';
-import { isSiteAdminSelector, authenticationSelector, logout, orgLoginStart, loggedInUserSelector, orgLogout } from 'ui/redux/modules/auth';
+import {
+  isSiteAdminSelector,
+  authenticationSelector,
+  logout as logoutAction,
+  orgLoginStart as orgLoginStartAction,
+  loggedInUserSelector,
+  orgLogout as orgLogoutAction
+} from 'ui/redux/modules/auth';
 import { queryStringToQuery } from 'ui/redux/modules/search';
 import { withModel, withSchema } from 'ui/utils/hocs';
-import Spinner from 'ui/components/Spinner';
 import FullPageBackground from 'ui/components/FullPageBackground';
 import AuthContainer from 'ui/containers/AuthContainer';
 import smallLogo from 'ui/static/smallLogo.png';
 import OrgMemberButton from 'ui/containers/OrgMemberButton';
 import { SITE_SETTINGS_ID } from 'lib/constants/siteSettings';
-import Register from './Register';
 
 const Underline = styled.div`
   height: 0;
-  border-bottom: 2px solid #DDA476;
+  border-bottom: 2px solid #dda476;
   width: 250px;
   margin: 0 auto;
 `;
 
-class Home extends Component {
-  static propTypes = {
-    models: PropTypes.instanceOf(ImmutList),
-    fetchMore: PropTypes.func,
-    modelCount: PropTypes.number,
-    logout: PropTypes.func,
-    orgLogout: PropTypes.func,
-    orgLoginStart: PropTypes.func,
-    navigateTo: PropTypes.func,
-    isSiteAdmin: PropTypes.bool,
-    auth: PropTypes.instanceOf(Map),
-    orgSearch: PropTypes.string,
-    setOrgSearch: PropTypes.func,
-  }
+const Card = styled.div`
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  margin-top: 12px;
+  padding: 20px;
+`;
 
-  static defaultProps = {
-    models: new ImmutList(),
-    auth: new Map(),
-    authUser: new Map(),
-    isSiteAdmin: false
-  }
+const OrgList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+`;
 
-  componentDidMount = () => {
-    const proceedOnce = sessionStorage.getItem('proceedOnce') === 'true';
-    this.setState({ proceedOnce });
+const OrgButton = styled.button`
+  width: 100%;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 8px 12px;
+`;
+
+export const Home = ({
+  models,
+  logout,
+  orgLogout,
+  orgLoginStart,
+  navigateTo,
+  isSiteAdmin,
+  auth,
+  orgSearch,
+  setOrgSearch,
+  model,
+  ok
+}) => {
+  const [proceedOnce, setProceedOnce] = useState(false);
+
+  useEffect(() => {
+    const hasProceeded = sessionStorage.getItem('proceedOnce') === 'true';
+    setProceedOnce(hasProceeded);
 
     const sessionStorageSetHandler = () => {
-      this.setState({ proceedOnce: true });
+      setProceedOnce(true);
     };
 
     document.addEventListener('setProceedOnce', sessionStorageSetHandler, false);
+    orgLogout();
 
-    this.props.orgLogout();
-  }
+    return () => {
+      document.removeEventListener('setProceedOnce', sessionStorageSetHandler, false);
+    };
+  }, [orgLogout]);
 
-  onOrgSearch = (event) => {
-    this.props.setOrgSearch(event.target.value);
-  }
-
-  onClickOrgLogin = (orgId, e) => {
-    if (e) e.preventDefault();
-
-    const { models } = this.props;
-    const organisation = models.find(model => orgId === model.get('_id'));
+  const onClickOrgLogin = (orgId) => {
+    const organisation = models.find(currentOrg => orgId === currentOrg.get('_id'));
 
     if (
-      !this.props.isSiteAdmin &&
-      organisation.get('expiration') && moment(organisation.get('expiration')).isBefore(moment())
+      !isSiteAdmin &&
+      organisation &&
+      organisation.get('expiration') &&
+      moment(organisation.get('expiration')).isBefore(moment())
     ) {
       return;
     }
 
-    this.props.orgLoginStart({ organisation: orgId });
-  }
+    orgLoginStart({ organisation: orgId });
+  };
 
-  onClickLogout = (e) => {
-    if (e) e.preventDefault();
-    this.props.logout();
-  }
+  const onClickLogout = () => {
+    logout();
+  };
 
-  gotoSiteAdminUsers = (e) => {
-    if (e) e.preventDefault();
-    this.props.navigateTo('admin.users');
-  }
+  const gotoSiteAdminUsers = () => {
+    navigateTo('admin.users');
+  };
 
-  gotoSiteAdminOrgs = (e) => {
-    if (e) e.preventDefault();
-    this.props.navigateTo('admin.organisations');
-  }
+  const gotoSiteAdminOrgs = () => {
+    navigateTo('admin.organisations');
+  };
 
-  isOrganisationLoaded = ({ index }) => {
-    const { models } = this.props;
-    return models.has(index);
-  }
+  const renderOrgActions = organisation => (
+    <div>
+      {organisation.get('expiration') && moment(organisation.get('expiration')).isBefore(moment()) ? (
+        <span style={{ color: 'red', marginRight: '8px' }}>Expired</span>
+      ) : null}
+      {isSiteAdmin ? (
+        <OrgMemberButton
+          schema="organisation"
+          id={organisation.get('_id')} />
+      ) : null}
+    </div>
+  );
 
-  renderOrg = ({ key, style, index }) => {
-    const { models, isSiteAdmin } = this.props;
-    if (models.has(index)) {
-      const organisation = models.get(index);
-
-      const name = organisation.get('name');
-
-      const rightActions = [];
-      if (organisation.get('expiration') && moment(organisation.get('expiration')).isBefore(moment())) {
-        rightActions.push(
-          <span
-            key="expired"
-            style={{ color: 'red' }}>
-            Expired
-          </span>
-        );
-      }
-      if (isSiteAdmin) {
-        rightActions.push(
-          <OrgMemberButton
-            key="member"
-            schema="organisation"
-            id={organisation.get('_id')} />
-        );
-      }
-
+  const renderOrgList = () => {
+    if (models.isEmpty()) {
       return (
-        <div key={key} style={style}>
-          <ListItem
-            selectable
-            ripple
-            onClick={this.onClickOrgLogin.bind(null, organisation.get('_id'))}
-            avatar={organisation.get('logoPath') ? organisation.get('logoPath') : smallLogo}
-            caption={name}
-            rightActions={rightActions} />
+        <div style={{ marginTop: '5px', textAlign: 'center' }}>
+          {orgSearch === ''
+            ? 'You have not been added to any organisations.'
+            : 'You do not belong to any organisations matching that search.'}
         </div>
       );
     }
+
     return (
-      <div key={key} style={style}>
-        <ListItem selectable ripple caption="Loading..." />
-      </div>
+      <OrgList>
+        {models.map(organisation => (
+          <li key={organisation.get('_id')}>
+            <OrgButton onClick={() => onClickOrgLogin(organisation.get('_id'))}>
+              <span>
+                <img
+                  alt="Organisation logo"
+                  src={organisation.get('logoPath') ? organisation.get('logoPath') : smallLogo}
+                  style={{ height: 24, marginRight: 8, width: 24 }} />
+                {organisation.get('name')}
+              </span>
+              {renderOrgActions(organisation)}
+            </OrgButton>
+          </li>
+        )).toArray()}
+      </OrgList>
     );
-  }
+  };
 
-  renderOrgList = () => {
-    const { modelCount, models } = this.props;
-    const rowCount = modelCount || models.size;
-    const rowHeight = 56;
+  const error = auth.get('error');
+  const dontShowRegistration = (model.size === 0 || model.get('dontShowRegistration') === true || ok === true);
+  const bypassRegistration = dontShowRegistration || proceedOnce;
 
-    return (
-      <AutoSizer disableHeight>
-        {({ width }) => (
-          <InfiniteLoader
-            isRowLoaded={this.isOrganisationLoaded}
-            loadMoreRows={this.props.fetchMore}
-            rowCount={rowCount} >
-            {({ onRowsRendered, registerChild }) => (
-              <List>
-                <VirtualList
-                  width={width}
-                  height={Math.min(6, rowCount) * rowHeight}
-                  onRowsRendered={onRowsRendered}
-                  ref={registerChild}
-                  rowCount={rowCount}
-                  rowHeight={rowHeight}
-                  rowRenderer={this.renderOrg} />
-              </List>
-            )}
-          </InfiniteLoader>
+  return (
+    <FullPageBackground>
+      <AuthContainer>
+        <Helmet title=" - Choose an organisation" />
+        <Underline />
+        <h3>Choose your organisation</h3>
+        {!bypassRegistration ? (
+          <Card>
+            <p>Welcome to the modernized UI experience.</p>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                sessionStorage.setItem('proceedOnce', 'true');
+                setProceedOnce(true);
+              }}>
+              Continue
+            </button>
+          </Card>
+        ) : (
+          <Card>
+            {isSiteAdmin ? (
+              <div>
+                <h4>Site Administration</h4>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <button className="btn btn-default" onClick={gotoSiteAdminUsers}>View all users</button>
+                  <button className="btn btn-default" onClick={gotoSiteAdminOrgs}>View all organisations</button>
+                </div>
+              </div>
+            ) : null}
+
+            <h4>Your Organisations</h4>
+            <input
+              className="form-control"
+              onChange={event => setOrgSearch(event.target.value)}
+              placeholder="Search organisations"
+              style={{ marginBottom: 8 }}
+              value={orgSearch} />
+            {renderOrgList()}
+
+            {error ? (
+              <div className="alert alert-danger" role="alert" style={{ marginTop: 12 }}>
+                <span className="sr-only">Error:</span> {error}
+              </div>
+            ) : null}
+          </Card>
         )}
-      </AutoSizer>
-    );
-  }
 
-  renderEmptySearch = () => {
-    const { isLoading } = this.props;
-    if (isLoading) return <Spinner />;
-    return (
-      <div style={{ marginTop: '5px', textAlign: 'center' }}>
-        You do not belong to any organisations matching that search.
-      </div>
-    );
-  }
+        <div style={{ marginTop: 20, textAlign: 'center' }}>
+          <button className="btn btn-danger" onClick={onClickLogout}>
+            <i className="ion ion-log-out" /> Log Out
+          </button>
+        </div>
+      </AuthContainer>
+    </FullPageBackground>
+  );
+};
 
-  renderNoUserOrgs = () => {
-    const { isLoading } = this.props;
-    if (isLoading) return <Spinner />;
-    return (
-      <div style={{ marginTop: '5px', textAlign: 'center' }}>
-        You have not been added to any organisations.
-      </div>
-    );
-  }
+Home.propTypes = {
+  models: PropTypes.instanceOf(ImmutList),
+  logout: PropTypes.func,
+  orgLogout: PropTypes.func,
+  orgLoginStart: PropTypes.func,
+  navigateTo: PropTypes.func,
+  isSiteAdmin: PropTypes.bool,
+  auth: PropTypes.instanceOf(Map),
+  orgSearch: PropTypes.string,
+  setOrgSearch: PropTypes.func,
+  model: PropTypes.instanceOf(Map),
+  ok: PropTypes.bool,
+};
 
-  render() {
-    const { auth, isSiteAdmin, models, orgSearch, model, ok } = this.props;
-    const error = auth.get('error');
-    const dontShowRegistration = (model.size === 0 || model.get('dontShowRegistration') === true || ok === true);
-    const bypassRegistration = dontShowRegistration || this.state.proceedOnce;
-
-    return (
-      <FullPageBackground>
-        <AuthContainer>
-
-        {bypassRegistration ?
-          <React.Fragment>
-            <Underline />
-            <h3>Choose your organisation</h3>
-            <Card>
-              <CardText>
-                <Helmet title=" - Choose an organisation" />
-                {isSiteAdmin && (
-                  <div>
-                    <h4>Site Administration</h4>
-                    <List selectable ripple>
-                      <ListItem
-                        leftIcon={<i className="ion-ios-people" />}
-                        onClick={this.gotoSiteAdminUsers}
-                        caption="View all users"
-                        flat />
-                      <ListItem
-                        leftIcon={<i className="glyphicon glyphicon-tree-conifer" />}
-                        onClick={this.gotoSiteAdminOrgs}
-                        caption="View all organisations"
-                        flat />
-                    </List>
-                  </div>
-                )}
-
-                {
-                  models.isEmpty() && orgSearch === '' ? (
-                    this.renderNoUserOrgs()
-                  ) : (
-                      <div>
-                        <div>
-                          <h4>Your Organisations</h4>
-                          {
-                            orgSearch !== '' || models.size > 5 ? (
-                              <DebounceInput
-                                className="form-control"
-                                debounceTimeout={377}
-                                value={orgSearch}
-                                onChange={this.onOrgSearch} />
-                            ) : <noscript />
-                          }
-                          {models.isEmpty() ? this.renderEmptySearch() : this.renderOrgList()}
-                        </div>
-                      </div>
-                    )
-                }
-                {error &&
-                  <div className="alert alert-danger" role="alert">
-                    <span className="sr-only">Error:</span> {error}
-                  </div>
-                }
-              </CardText>
-            </Card>
-
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
-              <button className="btn btn-danger" onClick={this.onClickLogout}>
-                <i className="ion ion-log-out" /> Log Out
-              </button>
-            </div>
-          </React.Fragment>
-          :
-          <Register />
-        }
-        </AuthContainer>
-      </FullPageBackground>
-    );
-  }
-}
+Home.defaultProps = {
+  models: new ImmutList(),
+  auth: new Map(),
+  model: new Map(),
+  isSiteAdmin: false,
+  logout: () => {},
+  orgLogout: () => {},
+  orgLoginStart: () => {},
+  navigateTo: () => {},
+  orgSearch: '',
+  setOrgSearch: () => {},
+  ok: false,
+};
 
 export default compose(
   connect(state => ({
     auth: authenticationSelector(state),
     authUser: loggedInUserSelector(state),
     isSiteAdmin: isSiteAdminSelector(state)
-  }), { logout, orgLoginStart, orgLogout, navigateTo: routerActions.navigateTo }),
+  }), {
+    logout: logoutAction,
+    orgLoginStart: orgLoginStartAction,
+    orgLogout: orgLogoutAction,
+    navigateTo: routerActions.navigateTo
+  }),
   withState('orgSearch', 'setOrgSearch', ''),
   withProps(({ authUser, orgSearch }) => {
     const userOrgs = authUser.get('organisations', new ImmutList());
