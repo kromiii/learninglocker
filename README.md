@@ -11,9 +11,9 @@ Please see our [documentation](http://docs.learninglocker.net) for installation,
 
 You can also [register your Learning Locker](https://learningpool.com/register-locker) or get [Learning Locker Data Cloud](https://learningpool.com/solutions/learning-record-store-learning-locker).
 
-## Modern UI (Phase 1)
+## Modern UI
 
-`ui-modern` contains a new React 18 + Vite + TypeScript UI scaffold.
+`ui-modern` is the primary UI and uses React 18 + Vite + TypeScript.
 
 - Start: `npm --prefix ui-modern run dev`
 - Build: `npm --prefix ui-modern run build`
