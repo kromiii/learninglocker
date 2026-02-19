@@ -26,7 +26,7 @@
     "build-web-services": "babel-node api/build --release && babel-node ui/buildServer --release && babel-node ui/buildClient --release",
     "build-all": "babel-node api/build --release && babel-node ui/buildServer --release && babel-node ui/buildClient --release && babel-node cli/build --release && babel-node worker/build --release",
     "start-api-server": "node api/dist/server",
-    "start-ui-server": "npm --prefix ui-modern run preview -- --host 0.0.0.0 --port ${PORT:-3000}",
+    "start-ui-server": "npm --prefix ui-modern run preview -- --host 0.0.0.0 --port 3000",
     "start-worker-server": "node worker/dist/server",
     "start": "pm2 start pm2/all.json",
     "start-dev": "pm2 start pm2/dev-all.json",
