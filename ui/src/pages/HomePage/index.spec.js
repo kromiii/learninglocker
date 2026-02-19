@@ -3,6 +3,8 @@ import renderer from 'react-test-renderer';
 import { fromJS } from 'immutable';
 import { Home } from './index';
 
+const { act } = renderer;
+
 jest.mock('ui/components/FullPageBackground', () => ({ children }) => <div>{children}</div>);
 jest.mock('ui/containers/AuthContainer', () => ({ children }) => <div>{children}</div>);
 jest.mock('ui/containers/OrgMemberButton', () => () => <div />);
@@ -38,9 +40,10 @@ describe('HomePage', () => {
   it('renders modernized registration gate content', () => {
     const component = renderer.create(
       <Home {...createProps({ model: fromJS({ dontShowRegistration: false, name: 'site' }) })} />
-    ).toJSON();
+    );
 
-    expect(JSON.stringify(component)).toContain('modernized UI experience');
+    const paragraphs = component.root.findAllByType('p');
+    expect(paragraphs[0].children.join('')).toContain('modernized UI experience');
   });
 
   it('renders organisations when registration is bypassed', () => {
@@ -52,5 +55,20 @@ describe('HomePage', () => {
     ).toJSON();
 
     expect(JSON.stringify(component)).toContain('Org One');
+  });
+
+  it('allows continuing from registration gate', () => {
+    const component = renderer.create(
+      <Home {...createProps({ model: fromJS({ dontShowRegistration: false, name: 'site' }) })} />
+    );
+
+    const continueButton = component.root.findAllByType('button')
+      .find(button => button.children.join('') === 'Continue');
+
+    act(() => {
+      continueButton.props.onClick();
+    });
+
+    expect(global.sessionStorage.setItem).toHaveBeenCalledWith('proceedOnce', 'true');
   });
 });

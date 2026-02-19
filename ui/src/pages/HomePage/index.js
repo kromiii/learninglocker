@@ -90,10 +90,10 @@ export const Home = ({
 
   const onClickOrgLogin = (orgId) => {
     const organisation = models.find(currentOrg => orgId === currentOrg.get('_id'));
+    if (!organisation) return;
 
     if (
       !isSiteAdmin &&
-      organisation &&
       organisation.get('expiration') &&
       moment(organisation.get('expiration')).isBefore(moment())
     ) {
@@ -141,26 +141,29 @@ export const Home = ({
 
     return (
       <OrgList>
-        {models.map(organisation => (
-          <li key={organisation.get('_id')}>
-            <OrgButton onClick={() => onClickOrgLogin(organisation.get('_id'))}>
-              <span>
-                <img
-                  alt="Organisation logo"
-                  src={organisation.get('logoPath') ? organisation.get('logoPath') : smallLogo}
-                  style={{ height: 24, marginRight: 8, width: 24 }} />
-                {organisation.get('name')}
-              </span>
-              {renderOrgActions(organisation)}
-            </OrgButton>
-          </li>
-        )).toArray()}
+        {models.map((organisation) => {
+          const logoPath = organisation.get('logoPath') || smallLogo;
+          return (
+            <li key={organisation.get('_id')}>
+              <OrgButton onClick={() => onClickOrgLogin(organisation.get('_id'))}>
+                <span>
+                  <img
+                    alt="Organisation logo"
+                    src={logoPath}
+                    style={{ height: 24, marginRight: 8, width: 24 }} />
+                  {organisation.get('name')}
+                </span>
+                {renderOrgActions(organisation)}
+              </OrgButton>
+            </li>
+          );
+        }).toArray()}
       </OrgList>
     );
   };
 
   const error = auth.get('error');
-  const dontShowRegistration = (model.size === 0 || model.get('dontShowRegistration') === true || ok === true);
+  const dontShowRegistration = (model.size === 0 || model.get('dontShowRegistration') || ok);
   const bypassRegistration = dontShowRegistration || proceedOnce;
 
   return (
@@ -195,6 +198,7 @@ export const Home = ({
 
             <h4>Your Organisations</h4>
             <input
+              aria-label="Search organisations"
               className="form-control"
               onChange={event => setOrgSearch(event.target.value)}
               placeholder="Search organisations"
