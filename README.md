@@ -10,3 +10,10 @@
 Please see our [documentation](http://docs.learninglocker.net) for installation, configuration, and usage instructions.
 
 You can also [register your Learning Locker](https://learningpool.com/register-locker) or get [Learning Locker Data Cloud](https://learningpool.com/solutions/learning-record-store-learning-locker).
+
+## Modern UI (Phase 1)
+
+`/home/runner/work/learninglocker/learninglocker/ui-modern` contains a new React 18 + Vite + TypeScript UI scaffold.
+
+- Start: `npm --prefix /home/runner/work/learninglocker/learninglocker/ui-modern run dev`
+- Build: `npm --prefix /home/runner/work/learninglocker/learninglocker/ui-modern run build`
